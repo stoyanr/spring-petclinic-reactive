@@ -1,0 +1,35 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - name: spring-petclinic-angular
+    before: cd /workspace && git clone https://github.com/spring-petclinic/spring-petclinic-angular.git && cd /workspace/spring-petclinic-angular
+    init: npm install --silent && npm run build --silent
+    command: |
+      echo "export const environment = {production: false, REST_API_URL: '$(gp url 9966)/petclinic/api/'};" > /workspace/spring-petclinic-angular/src/environments/environment.ts 
+      npm run start
+  - name: spring-petclinic-reactive
+    init:  mvn clean package install && . setup.sh
+    command: mvn clean package install && java -jar target/spring-petclinic-reactive-1.0.0-SNAPSHOT.jar 
+
+ports:
+  - port: 4200
+    onOpen: open-browser 
+    # Backend port showing 
+  - port: 9966
+    onOpen: open-browser
+    # This is actuator port
+  - port: 9967
+    onOpen: ignore
+
+github:
+  prebuilds:
+    master: false
+    branches: false
+    pullRequests: false
+    pullRequestsFromForks: false
+    addCheck: false
+    addComment: false
+    addBadge: false
+    addLabel: false
+
