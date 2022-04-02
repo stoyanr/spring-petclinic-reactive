@@ -1,0 +1,46 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - name: spring-petclinic-angular
+    init: |
+      cd /workspace/spring-petclinic-reactive/spring-petclinic-angular
+      npm install --silent
+      npm run build --silent
+    command: |
+      cd /workspace/spring-petclinic-reactive/spring-petclinic-angular
+      echo "export const environment = {production: false, REST_API_URL: '$(gp url 9966)/petclinic/api/'};" > /workspace/spring-petclinic-reactive/spring-petclinic-angular/src/environments/environment.ts 
+      npm run start
+    env:
+      # suppress the "Would you like to share anonymous usage data with the Angular Team at Google under Google’s Privacy Policy" message.
+      NG_CLI_ANALYTICS: ci
+  - name: spring-petclinic-reactive
+    init: |
+      mvn clean package install
+    command: |
+      . setup.sh
+      java -jar target/spring-petclinic-reactive-1.0.0-SNAPSHOT.jar 
+ports:
+  - port: 4200
+    onOpen: open-browser 
+    # Backend port showing 
+  - port: 9966
+    onOpen: open-browser
+    # This is actuator port
+  - port: 9967
+    onOpen: ignore
+
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: false
+    addCheck: true
+    addComment: false
+    addBadge: true
+    addLabel: false
+
+vscode:
+  extensions:
+    - Pivotal.vscode-spring-boot@1.22.0:NtlGb5ygHm2uP5qeqfVrCA==
