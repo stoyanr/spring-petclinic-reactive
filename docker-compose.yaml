@@ -1,0 +1,92 @@
+version: "3.8"
+services:
+
+  # Single Node Cassandra for local build (9042)
+  cassandra:
+    image: cassandra:3.11.8
+    container_name: cassandra-server
+    ports:
+      - 7000:7000
+      - 9042:9042
+    ulimits:
+      memlock: -1
+  
+  # Spring petclinic backend
+  petclinic-backend:
+    image: petclinic/backend:1.0
+    container_name: petclinic-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      labels:
+        com.springframework.samples.description: "pet Clinic"
+        com.springframework.samples.maintainer: "datastax"
+    ports:
+      - 9966:9966
+      - 9967:9967
+    environment:
+      LISTENING_PORT: 9966
+      MONITORING_ENABLED: "true"
+      MONITORING_PROMETHEUS: "true"
+      MONITORING_METRICS: "true"
+      MONITORING_LISTENING_PORT: 9967
+      DISTRIBUTED_TRACING_ENABLED: "true"
+      DISTRIBUTED_TRACING_URL: "http://tracing-server:9411"
+      CASSANDRA_CONTACT_POINTS: "cassandra:9042"
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_KEYSPACE_CREATE: "true"
+      CASSANDRA_KEYSPACE_NAME: spring_petclinic
+      CASSANDRA_KEYSPACE_CQL: "CREATE KEYSPACE IF NOT EXISTS spring_petclinic WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };"
+      CASSANDRA_USER: cassandra
+      CASSANDRA_PASSWORD: cassandra
+    depends_on:
+      - cassandra
+  
+  # Spring petclinic frontend
+  petclinic-frontend:
+    image: petclinic/frontend:1.0
+    container_name: petclinic-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile-frontend
+    ports:
+      - 8080:8080
+    depends_on:
+      - petclinic-backend
+      
+  # Web UI to visualixe data and execute custom commands (3001)    
+  cassandra-web:
+    image: ipushc/cassandra-web:v1.0.9
+    container_name: cassandra-webui
+    ports:
+     - 3001:3001
+    environment:
+     HOST_PORT: ":3001"
+     CASSANDRA_HOST: cassandra
+     CASSANDRA_PORT: 9042
+     CASSANDRA_USER: cassandra
+     CASSANDRA_PASSWORD: cassandra
+      
+  # Zipking for distributed Tracing (9411)
+  tracing-server: 
+    image: openzipkin/zipkin
+    container_name: tracing-server
+    environment:
+    - JAVA_OPTS=-XX:+UnlockExperimentalVMOptions -Djava.security.egd=file:/dev/./urandom
+    ports:
+     - 9411:9411
+     
+  # Grafana for ui visualixation (3002)
+  grafana-server:
+    build: ./docker/grafana
+    container_name: grafana-server
+    ports:
+     - 3002:3000
+
+  # Prometheus to collect metrics (9091)
+  prometheus-server:
+    build: ./docker/prometheus
+    container_name: prometheus-server
+    ports:
+     - 9091:9090
+     
